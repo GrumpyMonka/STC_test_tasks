@@ -2,84 +2,83 @@
 
 #include <QComboBox>
 #include <QGridLayout>
+#include <QHeaderView>
 #include <QLabel>
 #include <QMessageBox>
 #include <QTableView>
 
 DBView::DBView( QWidget* parent )
-    : QWidget( parent )
+    : QTableView( parent )
 {
-    CreateUI();
+    LoadDB();
 }
 
-void DBView::CreateUI()
+void DBView::LoadDB()
 {
-    QGridLayout* gridLayout = new QGridLayout();
+    if ( !QFile::exists( DB_PATH ) )
     {
-        QLabel* label = new QLabel( "Таблицы:", this );
-        label->setSizePolicy( QSizePolicy::Maximum, QSizePolicy::Maximum );
-
-        comboBox = new QComboBox( this );
-        connect( comboBox, &QComboBox::currentTextChanged,
-            this, &DBView::ChangeTable );
-
-        tableView = new QTableView( this );
-
-        gridLayout->addWidget( label, 0, 0 );
-        gridLayout->addWidget( comboBox, 0, 1 );
-        gridLayout->addWidget( tableView, 1, 0, 1, 8 );
+        QMessageBox::warning( this, this->metaObject()->className(), QString( "База Данных не найдена!\n %1" ).arg( DB_PATH ) );
+        return;
     }
-    this->setLayout( gridLayout );
-}
 
-bool DBView::OpenDB( const QString& new_pathToDB )
-{
-    Clear();
-    pathToDB = new_pathToDB;
-    dbase = QSqlDatabase::addDatabase( DB_TYPE, pathToDB );
-    dbase.setDatabaseName( pathToDB );
+    QSqlDatabase dbase = QSqlDatabase::addDatabase( DB_TYPE );
+    dbase.setDatabaseName( DB_PATH );
     if ( !dbase.open() )
     {
         QMessageBox::warning( this, this->metaObject()->className(), QString( "Ошибка загрузки Базы Данных!\n %1" ).arg( dbase.lastError().text() ) );
-        return false;
+        return;
     }
-    auto tables = dbase.tables();
-    if ( tables.empty() )
-    {
-        QMessageBox::warning( this, this->metaObject()->className(), QString( "В базе данных отсутсвуют таблицы!\n %1" ).arg( pathToDB ) );
-        return false;
-    }
-    comboBox->addItems( dbase.tables() );
 
-    for ( auto table : tables )
+    sqlModel = new QSqlTableModel( this, dbase );
+    sqlModel->setTable( DB_TABLE );
+    sqlModel->select();
+    while ( sqlModel->canFetchMore() )
     {
-        QSqlTableModel* sqlModel = new QSqlTableModel( this, dbase );
-        sqlModel->setTable( table );
-        sqlModel->select();
-        while ( sqlModel->canFetchMore() )
-        {
-            sqlModel->fetchMore();
-        }
-        sqlModel->setEditStrategy( QSqlTableModel::OnFieldChange );
-        sqlModelsList.insert( table, sqlModel );
+        sqlModel->fetchMore();
     }
-    return true;
+    sqlModel->setEditStrategy( QSqlTableModel::OnFieldChange );
+    sqlModel->setHeaderData( 3, Qt::Horizontal, "Префикс" );
+    sqlModel->setHeaderData( 4, Qt::Horizontal, "Название" );
+    sqlModel->setHeaderData( 5, Qt::Horizontal, "Название ENG" );
+    sqlModel->setHeaderData( 6, Qt::Horizontal, "Точка привязки" );
+    sqlModel->setHeaderData( 7, Qt::Horizontal, "Широта" );
+    sqlModel->setHeaderData( 8, Qt::Horizontal, "Долгота" );
+    sqlModel->setHeaderData( 10, Qt::Horizontal, "Население (тыс)" );
+    sqlModel->setHeaderData( 11, Qt::Horizontal, "Описание" );
+
+    this->setModel( sqlModel );
+    this->hideColumn( 0 );
+    this->hideColumn( 1 );
+    this->hideColumn( 2 );
+    this->hideColumn( 9 );
+    this->hideColumn( 12 );
+    this->horizontalHeader()->setSectionResizeMode( QHeaderView::Stretch );
 }
 
-void DBView::ChangeTable()
+void DBView::addRecord()
 {
-    tableView->setModel( sqlModelsList.value( comboBox->currentText() ) );
-    tableView->show();
-}
-
-void DBView::Clear()
-{
-    for ( auto sqlModel : sqlModelsList )
+    auto index = this->currentIndex();
+    if ( index.isValid() )
     {
-        sqlModel->clear();
+        sqlModel->insertRow( index.row() );
     }
-    sqlModelsList.clear();
-    dbase.close();
-    comboBox->clear();
-    pathToDB.clear();
+}
+/*
+префикс (в бд prefix)
+название (в бд name)
+точка привязки (в бд map_point)
+население (в бд population, округлять до тыс.)
+страна (в бд country)
+широта (в бд lat)
+долгота (в бд lon)
+описание (в бд description));
+*/
+void DBView::removeRecord()
+{
+    auto index = this->currentIndex();
+    if ( index.isValid() )
+    {
+        sqlModel->removeRow( this->currentIndex().row() );
+        this->hideRow( this->currentIndex().row() );
+    }
 }

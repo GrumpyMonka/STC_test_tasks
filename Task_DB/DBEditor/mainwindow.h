@@ -14,16 +14,11 @@ public:
 
 private:
     void CreateUI();
-    void CreateMenuBar();
-
-    void ConnectDB( const QString& pathToDB );
-
-private slots:
-    void slotOpenDB();
 
 private:
     const QString NAME_APP = "DBEditor";
 
+    QComboBox* comboBox;
     DBView* dbView = nullptr;
 };
 #endif // MAINWINDOW_H

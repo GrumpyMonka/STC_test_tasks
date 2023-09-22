@@ -6,12 +6,12 @@
 #include <QGridLayout>
 #include <QMenu>
 #include <QMenuBar>
+#include <QPushButton>
 
 MainWindow::MainWindow( QWidget* parent )
     : QMainWindow( parent )
 {
     CreateUI();
-    CreateMenuBar();
 }
 
 void MainWindow::CreateUI()
@@ -21,36 +21,24 @@ void MainWindow::CreateUI()
     auto gridLayout = new QGridLayout();
     {
         dbView = new DBView( this );
-        gridLayout->addWidget( dbView, 0, 0, 0, 0 );
+
+        QPushButton* buttonAddRecord = new QPushButton( "Добавить", this );
+        buttonAddRecord->setMinimumWidth( 60 );
+        connect( buttonAddRecord, &QPushButton::clicked,
+            dbView, &DBView::addRecord );
+
+        QPushButton* buttonRemoveRecord = new QPushButton( "Удалить", this );
+        buttonRemoveRecord->setMinimumWidth( 60 );
+        connect( buttonRemoveRecord, &QPushButton::clicked,
+            dbView, &DBView::removeRecord );
+
+        comboBox = new QComboBox( this );
+
+        gridLayout->addWidget( dbView, 0, 0, 10, 1 );
+        gridLayout->addWidget( buttonAddRecord, 0, 1 );
+        gridLayout->addWidget( buttonRemoveRecord, 1, 1 );
     }
     auto widget = new QWidget( this );
     widget->setLayout( gridLayout );
     this->setCentralWidget( widget );
-}
-
-void MainWindow::CreateMenuBar()
-{
-    auto menuBar = new QMenuBar( this );
-    {
-        auto menuFile = new QMenu( "Файл", this );
-        {
-            auto actionOpenDb = new QAction( "Открыть Базу Данных", this );
-            actionOpenDb->setShortcut( QString( "Ctrl+O" ) );
-            menuFile->addAction( actionOpenDb );
-            connect( actionOpenDb, &QAction::triggered,
-                this, &MainWindow::slotOpenDB );
-        }
-        menuBar->addMenu( menuFile );
-    }
-    this->setMenuBar( menuBar );
-}
-
-void MainWindow::slotOpenDB()
-{
-    this->setWindowTitle( NAME_APP );
-    auto pathToDB = QFileDialog::getOpenFileName( this, "Open DB" );
-    if ( dbView->OpenDB( pathToDB ) )
-    {
-        this->setWindowTitle( NAME_APP + "   *   " + pathToDB );
-    }
 }
