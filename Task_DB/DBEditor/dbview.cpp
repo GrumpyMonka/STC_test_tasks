@@ -1,3 +1,8 @@
+/**
+ * @file dbview.cpp
+ * @brief Виджет-таблица для просмотра Базы Данных
+ */
+
 #include "dbview.h"
 
 #include <QFile>

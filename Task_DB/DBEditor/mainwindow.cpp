@@ -1,3 +1,8 @@
+/**
+ * @file mainwindow.cpp
+ * @brief Главное окно программы
+ */
+
 #include "mainwindow.h"
 
 #include <QFileDialog>

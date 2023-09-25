@@ -1,11 +1,16 @@
+/**
+ * @file main.cpp
+ * @brief Точка старта приложения
+ */
+
 #include "mainwindow.h"
 
 #include <QApplication>
 
 int main(int argc, char *argv[])
 {
-    QApplication a(argc, argv);
-    MainWindow w;
-    w.show();
-    return a.exec();
+    QApplication appDB(argc, argv);
+    MainWindow window;
+    window.show();
+    return appDB.exec();
 }
