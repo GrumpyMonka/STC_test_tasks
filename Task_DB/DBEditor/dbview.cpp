@@ -1,16 +1,62 @@
 #include "dbview.h"
 
-#include <QComboBox>
+#include <QFile>
 #include <QGridLayout>
 #include <QHeaderView>
 #include <QLabel>
 #include <QMessageBox>
 #include <QTableView>
+#include <QtSql>
+
+#include <QDebug>
 
 DBView::DBView( QWidget* parent )
     : QTableView( parent )
 {
-    LoadDB();
+    sqlModel = new QStandardItemModel( this );
+    setModel( sqlModel );
+    connect( sqlModel, &QStandardItemModel::itemChanged,
+        this, &DBView::itemChanged );
+    this->horizontalHeader()->setSectionResizeMode( QHeaderView::Stretch );
+}
+
+DBView::~DBView()
+{
+    dataBase.close();
+}
+
+void DBView::LoadDataFormDB( const QString& filter )
+{
+    sqlModel->clear();
+    sqlModel->setHorizontalHeaderLabels( QStringList() << "Перфикс"
+                                                       << "Название"
+                                                       << "Точка привязки"
+                                                       << "Население (тыс)"
+                                                       << "Страна"
+                                                       << "Широта"
+                                                       << "Долгота"
+                                                       << "Описание" );
+
+    QSqlQuery sqlQuery;
+    if ( sqlQuery.exec( QString( QUERY_GET_ALL ).arg( filter ) ) )
+    {
+        while ( sqlQuery.next() )
+        {
+            QList<QStandardItem*> itemList;
+            for ( auto column : COLUMNS_NEW )
+            {
+                itemList.append( new QStandardItem( sqlQuery.value( column ).toString() ) );
+            }
+            itemList.append( new QStandardItem( sqlQuery.value( DB_TABLE_PK_NAME ).toString() ) );
+            sqlModel->appendRow( itemList );
+        }
+    }
+    else
+    {
+        QMessageBox::warning( this, this->metaObject()->className(), QString( "Ошибка загрузки данных из БД. %1" ).arg( sqlQuery.lastError().text() ) );
+    }
+    this->hideColumn( sqlModel->columnCount() - 1 );
+    emit dbLoaded( sqlModel->rowCount() );
 }
 
 void DBView::LoadDB()
@@ -21,64 +67,91 @@ void DBView::LoadDB()
         return;
     }
 
-    QSqlDatabase dbase = QSqlDatabase::addDatabase( DB_TYPE );
-    dbase.setDatabaseName( DB_PATH );
-    if ( !dbase.open() )
+    dataBase = QSqlDatabase::addDatabase( DB_TYPE );
+    dataBase.setDatabaseName( DB_PATH );
+    if ( !dataBase.open() )
     {
-        QMessageBox::warning( this, this->metaObject()->className(), QString( "Ошибка загрузки Базы Данных!\n %1" ).arg( dbase.lastError().text() ) );
+        QMessageBox::warning( this, this->metaObject()->className(), QString( "Ошибка загрузки Базы Данных!\n %1" ).arg( dataBase.lastError().text() ) );
         return;
     }
 
-    sqlModel = new QSqlTableModel( this, dbase );
-    sqlModel->setTable( DB_TABLE );
-    sqlModel->select();
-    while ( sqlModel->canFetchMore() )
-    {
-        sqlModel->fetchMore();
-    }
-    sqlModel->setEditStrategy( QSqlTableModel::OnFieldChange );
-    sqlModel->setHeaderData( 3, Qt::Horizontal, "Префикс" );
-    sqlModel->setHeaderData( 4, Qt::Horizontal, "Название" );
-    sqlModel->setHeaderData( 5, Qt::Horizontal, "Название ENG" );
-    sqlModel->setHeaderData( 6, Qt::Horizontal, "Точка привязки" );
-    sqlModel->setHeaderData( 7, Qt::Horizontal, "Широта" );
-    sqlModel->setHeaderData( 8, Qt::Horizontal, "Долгота" );
-    sqlModel->setHeaderData( 10, Qt::Horizontal, "Население (тыс)" );
-    sqlModel->setHeaderData( 11, Qt::Horizontal, "Описание" );
-
-    this->setModel( sqlModel );
-    this->hideColumn( 0 );
-    this->hideColumn( 1 );
-    this->hideColumn( 2 );
-    this->hideColumn( 9 );
-    this->hideColumn( 12 );
-    this->horizontalHeader()->setSectionResizeMode( QHeaderView::Stretch );
+    LoadDataFormDB();
 }
 
 void DBView::addRecord()
 {
-    auto index = this->currentIndex();
-    if ( index.isValid() )
+    QSqlQuery sqlQuery;
+    sqlQuery.prepare( QUERY_INSERT );
+    for ( auto value : COLUMNS )
     {
-        sqlModel->insertRow( index.row() );
+        sqlQuery.bindValue( ":" + value, "" );
     }
+
+    if ( sqlQuery.exec() )
+    {
+        QList<QStandardItem*> itemList;
+        for ( int i = 0; i < COLUMNS.size(); ++i )
+        {
+            itemList.append( new QStandardItem( "" ) );
+        }
+        itemList.append( new QStandardItem( sqlQuery.lastInsertId().toString() ) );
+        sqlModel->appendRow( itemList );
+        this->selectionModel()->select( itemList.first()->index(), QItemSelectionModel::ClearAndSelect );
+        this->scrollToBottom();
+    }
+    else
+    {
+        QMessageBox::warning( this, this->metaObject()->className(), QString( "Не удалось добавить запись в таблицу. %1. %2" ).arg( sqlQuery.lastError().text() ).arg( sqlQuery.lastQuery() ) );
+    }
+    emit dbLoaded( sqlModel->rowCount() );
 }
-/*
-префикс (в бд prefix)
-название (в бд name)
-точка привязки (в бд map_point)
-население (в бд population, округлять до тыс.)
-страна (в бд country)
-широта (в бд lat)
-долгота (в бд lon)
-описание (в бд description));
-*/
+
 void DBView::removeRecord()
 {
-    auto index = this->currentIndex();
-    if ( index.isValid() )
+    QStringList indexes;
+    auto selectedRows = this->selectionModel()->selectedIndexes();
+    for ( auto index : selectedRows )
     {
-        sqlModel->removeRow( this->currentIndex().row() );
-        this->hideRow( this->currentIndex().row() );
+        indexes.push_back( sqlModel->item( index.row(), sqlModel->columnCount() - 1 )->text() );
     }
+
+    QSqlQuery sqlQuery;
+    if ( sqlQuery.exec( QString( QUERY_REMOVE ).arg( indexes.join( ", " ) ) ) )
+    {
+        for ( auto index : selectedRows )
+        {
+            sqlModel->removeRow( index.row() );
+        }
+    }
+    else
+    {
+        QMessageBox::warning( this, this->metaObject()->className(), QString( "Не удалось удалить запись из таблицы. %1. %2" ).arg( sqlQuery.lastError().text() ).arg( sqlQuery.lastQuery() ) );
+    }
+    emit dbLoaded( sqlModel->rowCount() );
+}
+
+void DBView::itemChanged( QStandardItem* item )
+{
+    QString name_column = COLUMNS.at( item->column() );
+    QSqlQuery sqlQuery;
+    QString value = item->text();
+    if ( "population" == name_column )
+    {
+        value += " * " + QString::number( RATIO_POPULATION );
+    }
+    sqlQuery.prepare( QString( QUERY_CHANGE ).arg( name_column ) );
+    sqlQuery.bindValue( ":" + DB_TABLE_PK_NAME, sqlModel->item( item->row(), sqlModel->columnCount() - 1 )->text() );
+    sqlQuery.bindValue( ":" + name_column, value );
+    if ( sqlQuery.exec() )
+    {
+    }
+    else
+    {
+        QMessageBox::warning( this, this->metaObject()->className(), QString( "Не удалось изменить запись в таблице. %1. %2" ).arg( sqlQuery.lastError().text() ).arg( sqlQuery.lastQuery() ) );
+    }
+}
+
+void DBView::setFilter( const QString& filter )
+{
+    LoadDataFormDB( filter );
 }
