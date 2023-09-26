@@ -28,7 +28,7 @@ public:
      * @brief Загрузить БД
      */
     void LoadDB();
-    
+
     /**
      * @brief Деструктор
      */
@@ -80,7 +80,7 @@ private:
      * @brief Параметры для БД
      */
     const QString DB_TYPE = "QSQLITE";
-    const QString DB_PATH = "cities.db3";
+    const QString DB_PATH = QStandardPaths::standardLocations( QStandardPaths::AppDataLocation )[3] + "/" + "cities.db3";
     const QString DB_TABLE = "cities";
     const QString DB_TABLE_PK_NAME = "id";
 

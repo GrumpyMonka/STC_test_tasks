@@ -1,0 +1,11 @@
+Package: dbeditor
+Version: 1.0
+Section: database
+Priority: optional
+Depends: libqt5widgets5, libqt5sql5, libqt5gui5, libqt5core5a, libstdc++6, libgcc-s1, libc6
+Architecture: amd64
+Essential: no
+Installed-Size: 20
+Maintainer: Dmitry Muromsy <murom.d@mail.ru>
+Description: A database editor tool
+ This package provides a database editor tool for managing and editing database records.

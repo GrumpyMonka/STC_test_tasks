@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.11)
 
-project(DBEditor LANGUAGES CXX)
+project(dbeditor LANGUAGES CXX)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
@@ -22,13 +22,13 @@ set(PROJECT_SOURCES
 )
 
 if(ANDROID)
-    add_library(DBEditor SHARED
+    add_library(dbeditor SHARED
         ${PROJECT_SOURCES}
     )
 else()
-    add_executable(DBEditor
+    add_executable(dbeditor
         ${PROJECT_SOURCES}
     )
 endif()
 
-target_link_libraries(DBEditor PRIVATE Qt5::Widgets Qt5::Sql)
+target_link_libraries(dbeditor PRIVATE Qt5::Widgets Qt5::Sql)
