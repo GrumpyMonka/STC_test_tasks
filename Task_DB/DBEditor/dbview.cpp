@@ -13,8 +13,6 @@
 #include <QTableView>
 #include <QtSql>
 
-#include <QDebug>
-
 DBView::DBView( QWidget* parent )
     : QTableView( parent )
 {

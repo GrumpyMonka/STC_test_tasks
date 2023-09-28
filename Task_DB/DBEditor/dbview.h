@@ -80,7 +80,17 @@ private:
      * @brief Параметры для БД
      */
     const QString DB_TYPE = "QSQLITE";
-    const QString DB_PATH = QStandardPaths::standardLocations( QStandardPaths::AppDataLocation )[3] + "/" + "cities.db3";
+
+#ifdef QT_DEBUG
+    const QString DB_PATH = "cities.db3";
+#else
+    #ifdef Q_OS_LINUX
+        const QString DB_PATH = "/usr/share/dbeditor/cities.db3";
+    #else
+        const QString DB_PATH = QStandardPaths::writableLocation( AppDataLocation ) + "cities.db3";
+    #endif
+#endif
+
     const QString DB_TABLE = "cities";
     const QString DB_TABLE_PK_NAME = "id";
 
