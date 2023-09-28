@@ -11,6 +11,6 @@ int main( int argc, char* argv[] )
 {
     QApplication appDB( argc, argv );
     MainWindow window;
-    window.show();
+    window.showMaximized();
     return appDB.exec();
 }

@@ -20,7 +20,6 @@ MainWindow::MainWindow( QWidget* parent )
 
 void MainWindow::CreateUI()
 {
-    this->showMaximized();
     this->setWindowTitle( NAME_APP );
     auto gridLayout = new QGridLayout();
     {

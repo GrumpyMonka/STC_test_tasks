@@ -87,7 +87,7 @@ private:
     #ifdef Q_OS_LINUX
         const QString DB_PATH = "/usr/share/dbeditor/cities.db3";
     #else
-        const QString DB_PATH = QStandardPaths::writableLocation( AppDataLocation ) + "cities.db3";
+        const QString DB_PATH = QStandardPaths::writableLocation( QStandardPaths::AppDataLocation )  + "/cities.db3";
     #endif
 #endif
 
